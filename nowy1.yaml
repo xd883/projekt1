@@ -1,7 +1,7 @@
-- name: moj 1 playbook
-  hosts: projekt1
-
-
-  - name: Example from an Ansible Playbook
-  ansible.builtin.ping:
-    
+---
+- name: Example from an Ansible Playbook
+  hosts: all
+  tasks:
+    - name: Example task
+      debug:
+        msg: "Hello!"
