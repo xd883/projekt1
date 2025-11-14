@@ -1,6 +1,6 @@
 - name: moj 1 playbook
   hosts: projekt1
 
-  - name: zad1
-    ansible.builtin.ping:
+  - name: Example from an Ansible Playbook
+  ansible.builtin.ping:
     
