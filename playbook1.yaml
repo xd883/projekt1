@@ -113,11 +113,20 @@
         dest: "{{ adguard_tmp }}"
         mode: "0644"
 
-    - name: Extract only if AdGuardHome binary missing
+  
+    - name: Check if AdGuardHome is installed
+      stat:
+        path: /opt/adguardhome/AdGuardHome
+      register: adguard_installed
+
+
+    - name: Extract AdGuardHome archive
       unarchive:
-        src: "{{ adguard_tmp }}"
+        src: /tmp/AdGuardHome.tar.gz
         dest: /opt/adguardhome
         remote_src: yes
+        extra_opts: ["--strip-components=1"]
+      when: not adguard_installed.stat.exists
        
 
     - name: Ensure binary permissions
