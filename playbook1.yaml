@@ -24,12 +24,14 @@
   tasks:
 
 
-    - name: Extract AdGuard Home
-      unarchive:
-        src: "{{ adguard_tmp }}"
-        dest: "{{ mount_point }}"
-        remote_src: yes
-        extra_opts: ["--strip-components=1"]  # usuwa pierwszy katalog z archiwum
+    - name: Remount /adguardhome with exec option
+      mount:
+        path: /adguardhome
+        src: "/dev/{{ vg_name }}/{{ lv_name }}"
+        fstype: ext4
+        opts: defaults,exec
+        state: mounted
+
     - name: Ensure ownership and permissions
       file:
         path: /adguardhome/AdGuardHome
