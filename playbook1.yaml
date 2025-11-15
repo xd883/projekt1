@@ -101,12 +101,11 @@
         group: root
         mode: "0755"
 
-    - name: Download AdGuard Home if not downloaded
+    - name: Download AdGuard Home 
       get_url:
         url: "{{ adguard_download_url }}"
         dest: "{{ adguard_tmp }}"
         mode: "0644"
-      force: no
 
     - name: Extract only if AdGuardHome binary missing
       unarchive:
