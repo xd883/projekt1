@@ -46,13 +46,8 @@
         pvs: "{{ adg_pvs }}"
 
   
-    - name: Create mirrored logical volume (RAID1)
-      lvol:
-        vg: "{{ vg_name }}"
-        lv: "{{ lv_name }}"
-        size: "100%VG"
-        mirrors: 1          
-
+    - name: Create mirrored LV manually
+  command: "lvcreate -L100%VG -m1 -n {{ lv_name }} {{ vg_name }}"    
 
     - name: Create filesystem
       filesystem:
