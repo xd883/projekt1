@@ -1,6 +1,6 @@
 ---
 - name: Safe system update on Debian
-  hosts: all
+  hosts: adguard
   become: true
 
   tasks:
