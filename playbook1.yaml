@@ -1,0 +1,120 @@
+
+- name: Install and configure AdGuard Home with LVM RAID1 on Debian
+  hosts: adguard         
+  become: true
+  vars:
+    adg_pvs:
+      - /dev/sdb
+      - /dev/sdc
+    vg_name: adg_vg
+    lv_name: adg_lv
+    mount_point: /adguardhome
+    filesystem: ext4
+    adguard_tmp: /tmp/AdGuardHome.tar.gz
+    adguard_download_url: "https://github.com/AdguardTeam/AdGuardHome/releases/latest/download/AdGuardHome_linux_amd64.tar.gz"
+    adguard_ports:
+      - { proto: tcp, port: 22 }     
+      - { proto: tcp, port: 80 }     
+      - { proto: tcp, port: 443 }   
+      - { proto: tcp, port: 3000 }   
+      - { proto: udp, port: 53 }     
+      - { proto: tcp, port: 53 }     
+      - { proto: tcp, port: 853 }    
+
+  tasks:
+
+
+    - name: Install required system packages
+      apt:
+        name:
+          - lvm2          
+          - util-linux   
+          - wget         
+          - tar           
+          - ufw           
+        state: present
+        update_cache: yes
+
+   
+    - name: Create LVM physical volumes
+      command: "pvcreate -ff -y {{ item }}"
+      loop: "{{ adg_pvs }}"
+      args:
+        warn: false
+
+    - name: Create LVM volume group
+      lvg:
+        vg: "{{ vg_name }}"
+        pvs: "{{ adg_pvs }}"
+
+  
+    - name: Create mirrored logical volume (RAID1)
+      lvol:
+        vg: "{{ vg_name }}"
+        lv: "{{ lv_name }}"
+        size: "100%VG"
+        mirrors: 1          
+
+
+    - name: Create filesystem
+      filesystem:
+        fstype: "{{ filesystem }}"
+        dev: "/dev/{{ vg_name }}/{{ lv_name }}"
+
+    - name: Create mount directory
+      file:
+        path: "{{ mount_point }}"
+        state: directory
+        mode: "0755"
+
+    - name: Mount LV and add to fstab
+      mount:
+        path: "{{ mount_point }}"
+        src: "/dev/{{ vg_name }}/{{ lv_name }}"
+        fstype: "{{ filesystem }}"
+        state: mounted
+
+    - name: Download AdGuard Home
+      get_url:
+        url: "{{ adguard_download_url }}"
+        dest: "{{ adguard_tmp }}"
+
+
+    - name: Extract AdGuard Home
+      unarchive:
+        src: "{{ adguard_tmp }}"
+        dest: "{{ mount_point }}"
+        remote_src: yes
+        extra_opts: ["--strip-components=1"]  # usuwa pierwszy katalog z archiwum
+
+    - name: Ensure AdGuardHome binary is executable
+      file:
+        path: "{{ mount_point }}/AdGuardHome"
+        mode: "0755"
+
+    - name: Install AdGuardHome as systemd service
+      command: "{{ mount_point }}/AdGuardHome -s install"
+      args:
+        creates: /etc/systemd/system/AdGuardHome.service
+
+
+    - name: Enable UFW with deny policy
+      ufw:
+        state: enabled
+        policy: deny
+
+    - name: Allow required ports in UFW
+      ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+      loop: "{{ adguard_ports }}"
+
+    - name: Reload UFW
+      command: ufw reload
+
+    - name: Enable and start AdGuardHome
+      systemd:
+        name: AdGuardHome
+        enabled: yes
+        state: started
