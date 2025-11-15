@@ -82,6 +82,13 @@
         dest: "{{ mount_point }}"
         remote_src: yes
         extra_opts: ["--strip-components=1"]  # usuwa pierwszy katalog z archiwum
+    - name: Ensure ownership and permissions
+      file:
+        path: /adguardhome/AdGuardHome
+        owner: root
+        group: root
+        mode: '0755'
+
 
     - name: Ensure AdGuardHome binary is executable
       file:
