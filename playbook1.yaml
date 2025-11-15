@@ -23,6 +23,51 @@
 
   tasks:
 
+    - name: Install required system packages
+      apt:
+        name:
+          - lvm2          
+          - util-linux   
+          - wget         
+          - tar           
+          - ufw           
+        state: present
+        update_cache: yes
+
+   
+    - name: Create LVM physical volumes
+      command: "pvcreate -ff -y {{ item }}"
+      loop: "{{ adg_pvs }}"
+
+    - name: Create LVM volume group
+      lvg:
+        vg: "{{ vg_name }}"
+        pvs: "{{ adg_pvs }}"
+    - name: Create mirrored logical volume (RAID1)
+      command: "lvcreate -L 10G -m1 -n {{ lv_name }} {{ vg_name }}"
+      environment:
+        PATH: "/sbin:/usr/sbin:{{ ansible_env.PATH }}"
+      args:
+        creates: "/dev/{{ vg_name }}/{{ lv_name }}"
+    
+
+    - name: Create filesystem
+      filesystem:
+        fstype: "{{ filesystem }}"
+        dev: "/dev/{{ vg_name }}/{{ lv_name }}"
+
+    - name: Create mount directory
+      file:
+        path: "{{ mount_point }}"
+        state: directory
+        mode: "0755"
+
+    - name: Mount LV and add to fstab
+      mount:
+        path: "{{ mount_point }}"
+        src: "/dev/{{ vg_name }}/{{ lv_name }}"
+        fstype: "{{ filesystem }}"
+        state: mounted
 
     - name: Create installation directory for AdGuardHome
       file:
