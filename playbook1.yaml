@@ -118,8 +118,7 @@
         src: "{{ adguard_tmp }}"
         dest: /opt/adguardhome
         remote_src: yes
-        extra_opts: ["--strip-components=1"]
-      when: not lookup('ansible.builtin.fileglob', '/opt/adguardhome/AdGuardHome', errors='ignore')
+       
 
     - name: Ensure binary permissions
       file:
