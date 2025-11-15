@@ -85,12 +85,19 @@
         state: directory
         mode: "0755"
 
-    - name: Mount LV and persist in fstab
+    - name: Check if LV is already mounted
+      command: findmnt -n {{ mount_point }}
+      register: lv_mounted
+      failed_when: false
+      changed_when: false
+
+    - name: Mount LV and add to fstab
       mount:
         path: "{{ mount_point }}"
         src: "/dev/{{ vg_name }}/{{ lv_name }}"
         fstype: "{{ filesystem }}"
         state: mounted
+      when: lv_mounted.rc != 0
 
 
     - name: Create installation directory
