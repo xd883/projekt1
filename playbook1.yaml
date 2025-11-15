@@ -58,7 +58,7 @@
         mode: "0755"
 
     - name: Install AdGuardHome as systemd service
-      command: /opt/adguardhome/AdGuardHome -s install
+      command: /opt/adguardhome/AdGuardHome/AdGuardHome -s install
       become: true
       become_user: root
       args:
