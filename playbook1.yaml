@@ -39,8 +39,6 @@
     - name: Create LVM physical volumes
       command: "pvcreate -ff -y {{ item }}"
       loop: "{{ adg_pvs }}"
-      args:
-        warn: false
 
     - name: Create LVM volume group
       lvg:
