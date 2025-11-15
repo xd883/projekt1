@@ -59,6 +59,8 @@
 
     - name: Install AdGuardHome as systemd service
       command: /opt/adguardhome/AdGuardHome -s install
+      become: true
+      become_user: root
       args:
         creates: /etc/systemd/system/AdGuardHome.service
 
