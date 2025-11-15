@@ -77,7 +77,6 @@
       filesystem:
         fstype: "{{ filesystem }}"
         dev: "/dev/{{ vg_name }}/{{ lv_name }}"
-      when: mount_point is not mounted
 
     - name: Ensure mount directory exists
       file:
