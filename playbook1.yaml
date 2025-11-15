@@ -44,8 +44,13 @@
       lvg:
         vg: "{{ vg_name }}"
         pvs: "{{ adg_pvs }}"
-    - name: Create mirrored LV manually
-      command: "lvcreate -L100%VG -m1 -n {{ lv_name }} {{ vg_name }}"    
+    - name: Create mirrored logical volume (RAID1)
+      command: "lvcreate -L100%FREE -m1 -n {{ lv_name }} {{ vg_name }}"
+      environment:
+        PATH: "/sbin:/usr/sbin:{{ ansible_env.PATH }}"
+      args:
+        creates: "/dev/{{ vg_name }}/{{ lv_name }}"
+    
 
     - name: Create filesystem
       filesystem:
