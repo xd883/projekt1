@@ -15,7 +15,7 @@
         path: "{{ local_backup_dir }}"
         state: directory
         mode: "0755"
-    -name: ssh-passwd
+    - name: ssh-passwd
       delegate_to: local
       command: sshpass -p "{{ ssh_password }}"
     - name: Copy /opt/adguardhome to localhost
