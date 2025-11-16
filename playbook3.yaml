@@ -25,6 +25,7 @@
         src: /tmp/adguard_backup.tar.gz
         dest: /tmp/backups/
         flat: yes
+        delegate_to: local
 
 
 
