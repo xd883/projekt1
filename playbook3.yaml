@@ -29,6 +29,11 @@
         mode: "0755"
       delegate_to: localhost
       become: false
+    - name: Fetch backup archive from AdGuard server
+      fetch:
+        src: "{{ backup_temp_dir }}/{{ backup_filename }}"
+        dest: "/tmp/backups/"
+        flat: true
 
     - name: Copy backup archive to remote backup server
       copy:
