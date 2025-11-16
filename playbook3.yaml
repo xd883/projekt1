@@ -8,7 +8,7 @@
   tasks:
 
     - name: Ensure local backup directory exists on controller
-      delegate_to: localhost
+      delegate_to: local
       file:
         path: "{{ local_backup_dir }}"
         state: directory
