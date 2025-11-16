@@ -3,7 +3,7 @@
   hosts: adguard
   become: true
   vars:
-    adguard_dir: /opt/adguardhome
+    adguard_dir: /opt/adguardhome/AdGuardHome
     backup_temp_dir: /tmp/adguard_backup
     backup_filename: "adguard_backup.tar.gz"
     remote_backup_dir: /backups/adguard
@@ -28,12 +28,14 @@
         state: directory
         mode: "0755"
       delegate_to: localhost
+      become: false
 
     - name: Copy backup archive to remote backup server
       copy:
         src: "{{ backup_temp_dir }}/{{ backup_filename }}"
         dest: "{{ remote_backup_dir }}/{{ backup_filename }}"
       delegate_to: localhost
+      become: false
 
     - name: Cleanup local temp backup directory
       file:
