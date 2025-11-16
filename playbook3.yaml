@@ -9,8 +9,7 @@
   tasks:
 
     - name: Ensure local backup directory exists on controller
-      delegate_to: localhost
-      become: false
+      delegate_to: local
       file:
         path: "{{ local_backup_dir }}"
         state: directory
@@ -21,7 +20,6 @@
         src: "{{ adguard_dir }}"
         dest: "{{ local_backup_dir }}"
         recursive: yes
-      delegate_to: localhost
-      become: false
+      delegate_to: local
 
 
