@@ -4,7 +4,7 @@
 
   vars:
     adguard_dir: /opt/adguardhome
-    local_backup_dir: "/tmp/backups/adguard_{{ ansible_date_time.date }}"
+    local_backup_dir: "/tmp/backups/adguard"
 
   tasks:
 
