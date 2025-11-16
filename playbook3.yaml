@@ -7,7 +7,6 @@
     ssh_password: "zaq12wsx"
   tasks: 
     - block:
-    
       - name: Ensure local backup directory exists on controller 
         delegate_to: local 
         file:
