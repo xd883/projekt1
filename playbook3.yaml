@@ -22,7 +22,3 @@
         flat: no
 
 
-    - name: Cleanup local temp backup directory
-      file:
-        path: "{{ backup_temp_dir }}"
-        state: absent
