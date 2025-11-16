@@ -16,10 +16,12 @@
         state: directory
         mode: "0755"
 
-    - name: Fetch full AdGuardHome directory to localhost
-      fetch:
-        src: "{{ adguard_dir }}/"
-        dest: "{{ local_backup_dir }}/"
-        flat: no
+    - name: Copy /opt/adguardhome to localhost
+      synchronize:
+        src: "{{ adguard_dir }}"
+        dest: "{{ local_backup_dir }}"
+        recursive: yes
+      delegate_to: localhost
+      become: false
 
 
