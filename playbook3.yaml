@@ -24,7 +24,7 @@
           dest: /tmp/backups/adguard_backup.tar.gz 
           flat: true
           validate_checksum: true
-    rescue:
+    - rescue:
       - name: Send Slack notification on failure
         slack:
           token: "{{ slack_webhook_url }}"
