@@ -15,14 +15,10 @@
         path: "{{ local_backup_dir }}"
         state: directory
         mode: "0755"
-    - name: ssh-passwd
-      delegate_to: local
-      command: sshpass -p "{{ ssh_password }}"
-    - name: Copy /opt/adguardhome to localhost
-      synchronize:
-        src: "{{ adguard_dir }}"
-        dest: "{{ local_backup_dir }}"
-        recursive: yes
-      delegate_to: local
+    - name: Copy AdGuardHome folder to localhost via scp
+      command: >
+        sshpass -p "{{ ssh_password }}"
+        scp -r debian13@10.0.2.9:/opt/adguardhome /tmp/backups/adguardhome
+
 
 
