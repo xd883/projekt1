@@ -6,7 +6,7 @@
     adguard_dir: /opt/adguardhome/AdGuardHome
     backup_temp_dir: /tmp/adguard_backup
     backup_filename: "adguard_backup.tar.gz"
-    remote_backup_dir: /backups/adguard
+    remote_backup_dir: "/tmp/backups"
 
   tasks:
 
