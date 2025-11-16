@@ -1,25 +1,26 @@
 - name: Backup AdGuardHome directory from remote server to localhost
   hosts: adguard
-  become: true
+  become: true 
   vars:
     adguard_dir: /opt/adguardhome
-    local_backup_dir: /tmp/backups/adguard
-
-  tasks:
-
-    - name: Ensure local backup directory exists on controller
-      delegate_to: local
+    local_backup_dir: "/tmp/backups/adguard"
+    ssh_password: "zaq12wsx"
+  tasks: 
+    - name: Ensure local backup directory exists on controller 
+      delegate_to: local 
       file:
-        path: "{{ local_backup_dir }}"
-        state: directory
+        path: "{{ local_backup_dir }}" 
+        state: directory 
         mode: "0755"
-
-    - name: Synchronize AdGuardHome to local controller
-      synchronize:
-        src: "{{ adguard_dir }}/"
-        dest: "{{ local_backup_dir }}/"
-        recursive: yes
-      delegate_to: local
-
-
+    - name: Create tarball of AdGuardHome 
+      archive: 
+        path: /opt/adguardhome 
+        dest: /tmp/adguard_backup.tar.gz 
+        format: gz 
+    - name: Fetch backup to localhost 
+      fetch: 
+        src: /tmp/adguard_backup.tar.gz 
+        dest: /tmp/backups/adguard_backup.tar.gz 
+        flat: true
+        validate_checksum: true
 
