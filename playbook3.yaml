@@ -16,9 +16,7 @@
         state: directory
         mode: "0755"
     - name: Copy AdGuardHome folder to localhost via scp
-      command: >
-        sshpass -p "{{ ssh_password }}"
-        scp -r debian13@10.0.2.9:/opt/adguardhome /tmp/backups/adguardhome
+      shell: sshpass -p 'zaq12wsx' scp -r debian13@10.0.2.9:/opt/adguardhome /tmp/backups/adguardhome
 
 
 
