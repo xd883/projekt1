@@ -7,26 +7,26 @@
     ssh_password: "zaq12wsx"
   tasks: 
     - block:
-      - name: Ensure local backup directory exists on controller 
-        delegate_to: local 
-        file:
-          path: "{{ local_backup_dir }}" 
-          state: directory 
-          mode: "0755"
-      - name: Create tarball of AdGuardHome 
-        archive: 
-          path: /opt/adguardhome 
-          dest: /tmp/adguard_backup.tar.gz 
-          format: gz 
-      - name: Fetch backup to localhost 
-        fetch: 
-          src: /tmp/adguard_backup.tar.gz 
-          dest: /tmp/backups/adguard_backup.tar.gz 
-          flat: true
-          validate_checksum: true
-    - rescue:
-      - name: Send Slack notification on failure
-        slack:
-          token: "{{ slack_webhook_url }}"
-          msg: "Backup AdGuardHome FAILED"
+        - name: Ensure local backup directory exists on controller 
+          delegate_to: local 
+          file:
+            path: "{{ local_backup_dir }}" 
+            state: directory 
+            mode: "0755"
+        - name: Create tarball of AdGuardHome 
+          archive: 
+            path: /opt/adguardhome 
+            dest: /tmp/adguard_backup.tar.gz 
+            format: gz 
+        - name: Fetch backup to localhost 
+          fetch: 
+            src: /tmp/adguard_backup.tar.gz 
+            dest: /tmp/backups/adguard_backup.tar.gz 
+            flat: true
+            validate_checksum: true
+      rescue:
+        - name: Send Slack notification on failure
+          slack:
+            token: "{{ slack_webhook_url }}"
+            msg: "Backup AdGuardHome FAILED"
 
