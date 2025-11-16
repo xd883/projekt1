@@ -10,6 +10,7 @@
 
     - name: Ensure local backup directory exists on controller
       delegate_to: localhost
+      become: false
       file:
         path: "{{ local_backup_dir }}"
         state: directory
