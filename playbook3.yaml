@@ -15,14 +15,9 @@
         path: "{{ local_backup_dir }}"
         state: directory
         mode: "0755"
-    - name: Create tarball of AdGuardHome
-      archive:
-        path: /opt/adguardhome
-        dest: /tmp/adguard_backup.tar.gz
-        format: gz
     - name: Store file 
       ansible.builtin.fetch:
-        src: /tmp/adguard_backup.tar.gz
+        src: /tmp/adguard_backup
         dest: /tmp/backups
 
 
