@@ -27,6 +27,6 @@
       rescue:
         - name: Send Slack notification on failure
           slack:
-            token: "{{ slack_webhook_url }}"
+            token: T09T0AVUCV9/B09U132N3GQ/AQorXCga2iH2lV6Y9OUtDhvN
             msg: "Backup AdGuardHome FAILED"
 
