@@ -20,12 +20,10 @@
         path: /opt/adguardhome
         dest: /tmp/adguard_backup.tar.gz
         format: gz
-    - name: Fetch backup to localhost
-      fetch:
+    - name: Store file 
+      ansible.builtin.fetch:
         src: /tmp/adguard_backup.tar.gz
-        dest: /tmp/backups/
-        flat: yes
-        delegate_to: local
+        dest: /tmp/backups
 
 
 
