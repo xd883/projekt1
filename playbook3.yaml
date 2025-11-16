@@ -1,25 +1,25 @@
 - name: Backup AdGuardHome directory from remote server to localhost
   hosts: adguard
   become: true
-
   vars:
     adguard_dir: /opt/adguardhome
-    local_backup_dir: "/tmp/backups/adguard"
-    ssh_password: "zaq12wsx"
+    local_backup_dir: /tmp/backups/adguard
 
   tasks:
 
     - name: Ensure local backup directory exists on controller
-      delegate_to: local
+      delegate_to: localhost
       file:
         path: "{{ local_backup_dir }}"
         state: directory
         mode: "0755"
-    - name: Store file 
-      ansible.builtin.fetch:
-        src: /tmp/adguard_backup/adguard_backup.tar.gz
-        dest: /tmp/backups
 
+    - name: Synchronize AdGuardHome to local controller
+      synchronize:
+        src: "{{ adguard_dir }}/"
+        dest: "{{ local_backup_dir }}/"
+        recursive: yes
+      delegate_to: local
 
 
 
