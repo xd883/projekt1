@@ -17,7 +17,7 @@
         mode: "0755"
     - name: Store file 
       ansible.builtin.fetch:
-        src: /tmp/adguard_backup
+        src: /tmp/adguard_backup/adguard_backup.tar.gz
         dest: /tmp/backups
 
 
