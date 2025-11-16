@@ -5,6 +5,7 @@
   vars:
     adguard_dir: /opt/adguardhome
     local_backup_dir: "/tmp/backups/adguard"
+    ssh_password: "zaq12wsx"
 
   tasks:
 
@@ -14,7 +15,9 @@
         path: "{{ local_backup_dir }}"
         state: directory
         mode: "0755"
-
+    -name: ssh-passwd
+      delegate_to: local
+      command: sshpass -p "{{ ssh_password }}"
     - name: Copy /opt/adguardhome to localhost
       synchronize:
         src: "{{ adguard_dir }}"
