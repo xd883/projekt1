@@ -15,8 +15,17 @@
         path: "{{ local_backup_dir }}"
         state: directory
         mode: "0755"
-    - name: Copy AdGuardHome folder to localhost via scp
-      shell: sshpass -p 'zaq12wsx' scp -r debian13@10.0.2.9:/opt/adguardhome /tmp/backups/adguardhome
+    - name: Create tarball of AdGuardHome
+      archive:
+        path: /opt/adguardhome
+        dest: /tmp/adguard_backup.tar.gz
+        format: gz
+    - name: Fetch backup to localhost
+      fetch:
+        src: /tmp/adguard_backup.tar.gz
+        dest: /tmp/backups/
+        flat: yes
+
 
 
 
