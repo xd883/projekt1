@@ -1,46 +1,26 @@
----
-- name: Backup AdGuard Home to remote server
+- name: Backup AdGuardHome directory from remote server to localhost
   hosts: adguard
   become: true
+
   vars:
-    adguard_dir: /opt/adguardhome/AdGuardHome
-    backup_temp_dir: /tmp/adguard_backup
-    backup_filename: "adguard_backup.tar.gz"
-    remote_backup_dir: "/tmp/backups"
+    adguard_dir: /opt/adguardhome
+    local_backup_dir: "/tmp/backups/adguard_{{ ansible_date_time.date }}"
 
   tasks:
 
-    - name: Ensure local backup temp directory exists
-      file:
-        path: "{{ backup_temp_dir }}"
-        state: directory
-        mode: "0755"
-
-    - name: Create compressed backup archive
-      archive:
-        path: "{{ adguard_dir }}"
-        dest: "{{ backup_temp_dir }}/{{ backup_filename }}"
-        format: gz
-
-    - name: Ensure remote backup directory exists
-      file:
-        path: "{{ remote_backup_dir }}"
-        state: directory
-        mode: "0755"
+    - name: Ensure local backup directory exists on controller
       delegate_to: localhost
-      become: false
-    - name: Fetch backup archive from AdGuard server
+      file:
+        path: "{{ local_backup_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Fetch full AdGuardHome directory to localhost
       fetch:
-        src: "{{ backup_temp_dir }}/{{ backup_filename }}"
-        dest: "/tmp/backups/"
-        flat: true
+        src: "{{ adguard_dir }}/"
+        dest: "{{ local_backup_dir }}/"
+        flat: no
 
-    - name: Copy backup archive to remote backup server
-      copy:
-        src: "{{ backup_temp_dir }}/{{ backup_filename }}"
-        dest: "{{ remote_backup_dir }}/{{ backup_filename }}"
-      delegate_to: localhost
-      become: false
 
     - name: Cleanup local temp backup directory
       file:
