@@ -44,7 +44,7 @@
           $pool = New-StoragePool -FriendlyName $poolName -StorageSubSystemFriendlyName "Storage Spaces*" -PhysicalDisks $canpool
           Write-Output "Storage Pool $poolName utworzony."
         } else {
-          Write-Output "Storage Pool $poolName już istnieje."
+          Write-Output "Storage Pool już istnieje."
         }
         $ssdTier = Get-StorageTier -FriendlyName "SSDTier" -ErrorAction SilentlyContinue
         if (-not $ssdTier) {
@@ -69,9 +69,9 @@
             -StorageTiers @($ssdTier, $hddTier) `
             -StorageTierSizes @($ssdSize, $hddSize)
 
-          Write-Output "VirtualDisk $vdName utworzony."
+          Write-Output "VirtualDisk  utworzony."
         } else {
-          Write-Output "VirtualDisk $vdName już istnieje."
+          Write-Output "VirtualDisk już istnieje."
         }
 
         $vd = Get-VirtualDisk -FriendlyName $vdName
@@ -85,12 +85,12 @@
           Initialize-Disk -Number $disk.Number -PartitionStyle GPT
           New-Partition -DiskNumber $disk.Number -UseMaximumSize -DriveLetter $driveLetter | Out-Null
           Format-Volume -DriveLetter $driveLetter -FileSystem ReFS -Confirm:$false | Out-Null
-          Write-Output "Dysk $driveLetter: sformatowany w ReFS."
+          Write-Output "Dysk F: sformatowany w ReFS."
         } else {
           Write-Output "Dysk już zainicjalizowany."
         }
 
-        Write-Output "Dysk $driveLetter: gotowy."
+        Write-Output "Dysk F: gotowy."
     register: storage_result
 
   - name: Utwórz lokalną grupę Kierownicy_langier
