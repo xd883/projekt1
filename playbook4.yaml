@@ -129,7 +129,7 @@
       full: ".\\Administrators, .\\{{ group_name }}"
       state: present
 
-  - name: Nadaj ACL NTFS: pełny dostęp dla grupy Kierownicy_{{ nazwisko }} na folderze F:\Projekty
+  - name: Nadaj ACL NTFS: pełny dostęp dla grupy 
     ansible.windows.win_acl:
       path: "{{ projekty_path }}"
       user: ".\\{{ group_name }}"
