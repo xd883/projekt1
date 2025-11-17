@@ -1,204 +1,77 @@
 ---
-- name: Playbook 4 - Konfiguracja Puli Dyskowej, Udziału i Pozostałe 
-  hosts: winsrv
-  gather_facts: no
+- name: Playbook 4 - Konfiguracja Puli Dyskowej i Udziału Sieciowego
+  hosts: windows
+  gather_facts: yes
   vars:
-    
-    nazwisko: "langier"            
-    pool_name: "Pool_langier"
-    vdisk_name: "VD_langier"
-    vd_drive_letter: "F"
+    storage_pool_name: "Pool_Dyskowy"
+    virtual_disk_name: "VD_Projekty"
+    volume_letter: "F"
     share_name: "Projekty_langier"
-    projekty_path: "F:\\Projekty"
-    group_name: "Kierownicy_langier"
+    folder_path: "F:\\Projekty"
+    security_group: "Kierownicy_langier"
     users:
-      - name: "Marek.Romanek"
-        fullname: "Marek Romanek"
-        password: "Zaq12wsx"   
-      - name: "Jacek.Gula"
-        fullname: "Jacek Gula"
-        password: "Zaq12wsx"  
-    winget_packages:
-      - id: "7zip.7zip"
-      - id: "ISC.BIND"         
-      - id: "Mozilla.Firefox"
+      - { name: "Marek Romanek", password: "Zaq12wsx" }
+      - { name: "Jacek Gula", password: "Zaq12wsx" }
+    winget_apps:
+      - "7zip.7zip"
+      - "Firefox.Firefox"
+      - "ISC.Dig"
+
   tasks:
 
-  - name: Pobierz wszystkie dyski, które można dodać do Storage Pool
-    community.windows.win_disk_facts:
-    filter_can_pool: true
-    register: pool_disks
-
-  - name: Inicjalizuj dyski (GPT)
-    community.windows.win_initialize_disk:
-      disk_number: "{{ item.Number }}"
-      style: gpt
-      force: true
-    loop: "{{ pool_disks.disks }}"
-    loop_control:
-      label: "{{ item.FriendlyName }}"
-
-  - name: Utwórz Storage Pool
-    community.windows.win_storagepool:
-      name: "Pool_{{ nazwisko }}"
+  - name: Utwórz pulę dyskową z automatycznym tieringiem
+    win_storagepool:
+      name: "{{ storage_pool_name }}"
       state: present
-      physical_disks: "{{ pool_disks.disks | map(attribute='FriendlyName') | list }}"
-      storage_subsystem: "Storage Spaces*"
-    register: storage_pool
+      physical_disks: "all"
+      auto_tiering: yes
 
-  - name: Utwórz Storage Tier SSD
-    community.windows.win_storagetier:
-      name: "SSDTier"
-      state: present
-      media_type: SSD
-      storage_pool: "Pool_{{ nazwisko }}"
-    register: ssd_tier
-
-  - name: Utwórz Storage Tier HDD
-    community.windows.win_storagetier:
-      name: "HDDTier"
-      state: present
-      media_type: HDD
-      storage_pool: "Pool_{{ nazwisko }}"
-    register: hdd_tier
-
-  - name: Utwórz Virtual Disk z mirroringiem i tieringiem
-    community.windows.win_virtualdisk:
-      name: "VD_{{ nazwisko }}"
-      state: present
-      storage_pool: "Pool_{{ nazwisko }}"
-      resiliency_setting_name: Mirror
-      storage_tiers:
-        - "{{ ssd_tier.name }}"
-        - "{{ hdd_tier.name }}"
-      storage_tier_sizes:
-        - 0  
-        - 0  
-      size: 0 
-    register: virtual_disk
-
-  - name: Utwórz i sformatuj wolumin ReFS z literą F
-    community.windows.win_volume:
-      disk_number: "{{ virtual_disk.disk_number }}"
-      drive_letter: F
-      filesystem: ReFS
+  - name: Utwórz wirtualny dysk z mirroringiem obejmujący całą pulę
+    win_virtualdisk:
+      name: "{{ virtual_disk_name }}"
+      storage_pool: "{{ storage_pool_name }}"
+      size: max
+      provisioning_type: fixed
+      resiliency_setting_name: mirror
       state: present
 
-
-  - name: Utwórz lokalną grupę Kierownicy_langier
-    ansible.windows.win_group:
-      name: "{{ group_name }}"
+  - name: Sformatuj dysk w ReFS i przypisz literę
+    win_volume:
+      drive_letter: "{{ volume_letter }}"
+      file_system: ReFS
+      disk: "{{ virtual_disk_name }}"
       state: present
 
-  - name: Utwórz użytkowników lokalnych i ustaw hasła
-    ansible.windows.win_user:
+  - name: Utwórz grupę zabezpieczeń
+    win_group:
+      name: "{{ security_group }}"
+      state: present
+
+  - name: Utwórz użytkowników
+    win_user:
       name: "{{ item.name }}"
       password: "{{ item.password }}"
-      description: "{{ item.fullname }}"
       state: present
+      groups:
+        - "{{ security_group }}"
     loop: "{{ users }}"
 
-  - name: Dodaj użytkowników do grupy Kierownicy_langier
-    ansible.windows.win_group:
-      name: "{{ group_name }}"
-      members: "{{ users | map(attribute='name') | list }}"
-      state: present
-
-  - name: Utwórz katalog Projekty na dysku F
-    ansible.windows.win_file:
-      path: "{{ projekty_path }}"
+  - name: Utwórz folder Projekty na dysku F
+    win_file:
+      path: "{{ folder_path }}"
       state: directory
-      recurse: yes
 
-  - name: Utwórz udział sieciowy Projekty_langier
-    ansible.windows.win_share:
+  - name: Udostępnij folder w sieci
+    win_share:
       name: "{{ share_name }}"
-      path: "{{ projekty_path }}"
-      description: "Projekty dla grupy {{ group_name }}"
-      list: yes
-      full: ".\\Administrators, .\\{{ group_name }}"
+      path: "{{ folder_path }}"
+      description: "Udział projektów"
+      full_access: "{{ security_group }}"
+
+  - name: Zainstaluj aplikacje przez winget
+    win_package:
+      name: "{{ item }}"
       state: present
+      source: winget
+    loop: "{{ winget_apps }}"
 
-  - name: Nadaj ACL NTFS pełny dostęp dla grupy 
-    ansible.windows.win_acl:
-      path: "{{ projekty_path }}"
-      user: ".\\{{ group_name }}"
-      rights: "full"
-      type: allow
-      inheritance: "ContainerInherit, ObjectInherit"
-      propagate: no
-      state: present
-
-  - name: Usuń inne uprawnienia odziedziczone 
-    ansible.windows.win_acl:
-      path: "{{ projekty_path }}"
-      user: "BUILTIN\\Users"
-      state: absent
-      recurse: no
-      fail_on_missing: false
-
-  - name: Zainstaluj aplikacje przez winget (7zip, dig (ISC.BIND), Firefox)
-    ansible.windows.win_shell:
-      args:
-        executable: powershell.exe
-      cmd: |
-        $ErrorActionPreference = 'Continue'
-        {{- for pkg in winget_packages }}
-        winget install --id {{ pkg.id }} -e --accept-source-agreements --accept-package-agreements || Write-Output "winget install {{ pkg.id }} zwrócił błąd ale kontynuujemy"
-        {{- endfor }}
-    register: winget_result
-
-  - name: Ustawienie rejestru zablokuj usuwanie drukarek dla użytkowników bez uprawnień administracyjnych
-    ansible.windows.win_powershell:
-      script: |
-        $adminSIDs = (Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue | ForEach-Object { $_.SID.Value }) | Where-Object { $_ }
-        $profiles = Get-CimInstance -ClassName Win32_UserProfile | Where-Object { $_.LocalPath -and (Test-Path $_.LocalPath) }
-
-        foreach ($p in $profiles) {
-          try {
-            $sid = $p.SID
-            $isAdmin = $false
-            try {
-              $acct = New-Object System.Security.Principal.SecurityIdentifier($sid).Translate([System.Security.Principal.NTAccount]).Value
-              $parts = $acct.Split('\')
-              $userName = $acct
-              $members = Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }
-              if ($members -contains $userName) { $isAdmin = $true }
-            } catch {
-            }
-
-            if (-not $isAdmin) {
-              $hive = "HKU\$sid"
-              $ntuser = Join-Path $p.LocalPath "NTUSER.DAT"
-              if (-not (Get-ChildItem "Registry::${hive}" -ErrorAction SilentlyContinue)) {
-                reg.exe load "HKU\$sid" "$ntuser" > $null 2>&1
-                $loaded = $true
-              } else {
-                $loaded = $false
-              }
-
-              $explorerKey = "Registry::${hive}\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-              if (-not (Test-Path $explorerKey)) {
-                New-Item -Path $explorerKey -Force | Out-Null
-              }
-
-              New-ItemProperty -Path $explorerKey -Name "NoDeletePrinter" -PropertyType DWord -Value 1 -Force | Out-Null
-
-              if ($loaded) {
-                reg.exe unload "HKU\$sid" > $null 2>&1
-              }
-            } else {
-              Write-Output "Użytkownik z SID $sid jest administratorem — pomijam."
-            }
-          } catch {
-            Write-Output "Błąd przetwarzania profilu: $($_.Exception.Message)"
-          }
-        }
-    register: printer_policy_result
-
-  - name: Podsumowanie — wyświetl status operacji storage/install/registry
-    ansible.builtin.debug:
-      msg:
-        - "Storage: {{ storage_result.stdout if storage_result is defined else 'brak outputu' }}"
-        - "Winget: {{ winget_result.stdout if winget_result is defined else 'brak outputu' }}"
-        - "Registry (NoDeletePrinter): {{ printer_policy_result.stdout if printer_policy_result is defined else 'brak outputu' }}"
