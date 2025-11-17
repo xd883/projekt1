@@ -114,7 +114,7 @@
       members: "{{ users | map(attribute='name') | list }}"
       state: present
 
-  - name: Utwórz katalog Projekty na dysku F:
+  - name: Utwórz katalog Projekty na dysku F
     ansible.windows.win_file:
       path: "{{ projekty_path }}"
       state: directory
