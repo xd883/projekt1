@@ -25,73 +25,73 @@
   tasks:
 
   - name: Utwórz pulę dyskową, storage tiers i wirtualny dysk F
-  ansible.windows.win_powershell:
-    script: |
-      $poolName = "{{ pool_name }}"
-      $vdName = "{{ vdisk_name }}"
-      $driveLetter = "{{ vd_drive_letter }}"
+    ansible.windows.win_powershell:
+      script: |
+        $poolName = "{{ pool_name }}"
+        $vdName = "{{ vdisk_name }}"
+        $driveLetter = "{{ vd_drive_letter }}"
 
-      $canpool = Get-PhysicalDisk -CanPool $true
+        $canpool = Get-PhysicalDisk -CanPool $true
 
-      if ($canpool.Count -lt 1) {
-        Write-Error "Brak dysków z CanPool=True."
-        exit 1
-      }
+        if ($canpool.Count -lt 1) {
+          Write-Error "Brak dysków z CanPool=True."
+          exit 1
+        }
 
-      $pool = Get-StoragePool -FriendlyName $poolName -ErrorAction SilentlyContinue
+        $pool = Get-StoragePool -FriendlyName $poolName -ErrorAction SilentlyContinue
 
-      if (-not $pool) {
-        $pool = New-StoragePool -FriendlyName $poolName -StorageSubSystemFriendlyName "Storage Spaces*" -PhysicalDisks $canpool
-        Write-Output "Storage Pool $poolName utworzony."
-      } else {
-        Write-Output "Storage Pool $poolName już istnieje."
-      }
-      $ssdTier = Get-StorageTier -FriendlyName "SSDTier" -ErrorAction SilentlyContinue
-      if (-not $ssdTier) {
-        $ssdTier = $pool | New-StorageTier -FriendlyName "SSDTier" -MediaType SSD
-        Write-Output "Tier SSD utworzony."
-      }
+        if (-not $pool) {
+          $pool = New-StoragePool -FriendlyName $poolName -StorageSubSystemFriendlyName "Storage Spaces*" -PhysicalDisks $canpool
+          Write-Output "Storage Pool $poolName utworzony."
+        } else {
+          Write-Output "Storage Pool $poolName już istnieje."
+        }
+        $ssdTier = Get-StorageTier -FriendlyName "SSDTier" -ErrorAction SilentlyContinue
+        if (-not $ssdTier) {
+          $ssdTier = $pool | New-StorageTier -FriendlyName "SSDTier" -MediaType SSD
+          Write-Output "Tier SSD utworzony."
+        }
 
-      $hddTier = Get-StorageTier -FriendlyName "HDDTier" -ErrorAction SilentlyContinue
-      if (-not $hddTier) {
-        $hddTier = $pool | New-StorageTier -FriendlyName "HDDTier" -MediaType HDD
-        Write-Output "Tier HDD utworzony."
-      }
+        $hddTier = Get-StorageTier -FriendlyName "HDDTier" -ErrorAction SilentlyContinue
+        if (-not $hddTier) {
+          $hddTier = $pool | New-StorageTier -FriendlyName "HDDTier" -MediaType HDD
+          Write-Output "Tier HDD utworzony."
+        }
 
-      $ssdSize = ($pool | Get-PhysicalDisk | where MediaType -eq SSD | Measure-Object Size -Sum).Sum
-      $hddSize = ($pool | Get-PhysicalDisk | where MediaType -eq HDD | Measure-Object Size -Sum).Sum
+        $ssdSize = ($pool | Get-PhysicalDisk | where MediaType -eq SSD | Measure-Object Size -Sum).Sum
+        $hddSize = ($pool | Get-PhysicalDisk | where MediaType -eq HDD | Measure-Object Size -Sum).Sum
 
-      if (-not (Get-VirtualDisk -FriendlyName $vdName -ErrorAction SilentlyContinue)) {
-        New-VirtualDisk `
-          -StoragePoolFriendlyName $poolName `
-          -FriendlyName $vdName `
-          -ResiliencySettingName Mirror `
-          -StorageTiers @($ssdTier, $hddTier) `
-          -StorageTierSizes @($ssdSize, $hddSize)
+        if (-not (Get-VirtualDisk -FriendlyName $vdName -ErrorAction SilentlyContinue)) {
+          New-VirtualDisk `
+            -StoragePoolFriendlyName $poolName `
+            -FriendlyName $vdName `
+            -ResiliencySettingName Mirror `
+            -StorageTiers @($ssdTier, $hddTier) `
+            -StorageTierSizes @($ssdSize, $hddSize)
 
-        Write-Output "VirtualDisk $vdName utworzony."
-      } else {
-        Write-Output "VirtualDisk $vdName już istnieje."
-      }
+          Write-Output "VirtualDisk $vdName utworzony."
+        } else {
+          Write-Output "VirtualDisk $vdName już istnieje."
+        }
 
-      $vd = Get-VirtualDisk -FriendlyName $vdName
-      $disk = $vd | Get-Disk
+        $vd = Get-VirtualDisk -FriendlyName $vdName
+        $disk = $vd | Get-Disk
 
-      if ($disk.IsOffline) {
-        Set-Disk -Number $disk.Number -IsOffline $false
-      }
+        if ($disk.IsOffline) {
+          Set-Disk -Number $disk.Number -IsOffline $false
+        }
 
-      if ($disk.PartitionStyle -eq 'RAW') {
-        Initialize-Disk -Number $disk.Number -PartitionStyle GPT
-        New-Partition -DiskNumber $disk.Number -UseMaximumSize -DriveLetter $driveLetter | Out-Null
-        Format-Volume -DriveLetter $driveLetter -FileSystem ReFS -Confirm:$false | Out-Null
-        Write-Output "Dysk $driveLetter: sformatowany w ReFS."
-      } else {
-        Write-Output "Dysk już zainicjalizowany."
-      }
+        if ($disk.PartitionStyle -eq 'RAW') {
+          Initialize-Disk -Number $disk.Number -PartitionStyle GPT
+          New-Partition -DiskNumber $disk.Number -UseMaximumSize -DriveLetter $driveLetter | Out-Null
+          Format-Volume -DriveLetter $driveLetter -FileSystem ReFS -Confirm:$false | Out-Null
+          Write-Output "Dysk $driveLetter: sformatowany w ReFS."
+        } else {
+          Write-Output "Dysk już zainicjalizowany."
+        }
 
-      Write-Output "Dysk $driveLetter: gotowy."
-  register: storage_result
+        Write-Output "Dysk $driveLetter: gotowy."
+    register: storage_result
 
   - name: Utwórz lokalną grupę Kierownicy_langier
     ansible.windows.win_group:
