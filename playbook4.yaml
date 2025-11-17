@@ -159,3 +159,4 @@
                 --accept-source-agreements --accept-package-agreements
         }
       loop: "{{ winget_apps }}"
+      failed_when: false  
