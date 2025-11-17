@@ -24,74 +24,66 @@
       - id: "Mozilla.Firefox"
   tasks:
 
-  - name: Utwórz pulę dyskową, storage tiers i wirtualny dysk F
-    ansible.windows.win_powershell:
-      script: |
-        $poolName = "{{ pool_name }}"
-        $vdName = "{{ vdisk_name }}"
-        $driveLetter = "{{ vd_drive_letter }}"
+  - name: Pobierz wszystkie dyski, które można dodać do Storage Pool
+  community.windows.win_disk_facts:
+    filter_can_pool: true
+  register: pool_disks
 
-        $canpool = Get-PhysicalDisk -CanPool $true
+  - name: Inicjalizuj dyski (GPT)
+    community.windows.win_initialize_disk:
+      disk_number: "{{ item.Number }}"
+      style: gpt
+      force: true
+    loop: "{{ pool_disks.disks }}"
+    loop_control:
+      label: "{{ item.FriendlyName }}"
 
-        if ($canpool.Count -lt 1) {
-          Write-Error "Brak dysków z CanPool=True."
-          exit 1
-        }
+  - name: Utwórz Storage Pool
+    community.windows.win_storagepool:
+      name: "Pool_{{ nazwisko }}"
+      state: present
+      physical_disks: "{{ pool_disks.disks | map(attribute='FriendlyName') | list }}"
+      storage_subsystem: "Storage Spaces*"
+    register: storage_pool
 
-        $pool = Get-StoragePool -FriendlyName $poolName -ErrorAction SilentlyContinue
+  - name: Utwórz Storage Tier SSD
+    community.windows.win_storagetier:
+      name: "SSDTier"
+      state: present
+      media_type: SSD
+      storage_pool: "Pool_{{ nazwisko }}"
+    register: ssd_tier
 
-        if (-not $pool) {
-          $pool = New-StoragePool -FriendlyName $poolName -StorageSubSystemFriendlyName "Storage Spaces*" -PhysicalDisks $canpool
-          Write-Output "Storage Pool $poolName utworzony."
-        } else {
-          Write-Output "Storage Pool już istnieje."
-        }
-        $ssdTier = Get-StorageTier -FriendlyName "SSDTier" -ErrorAction SilentlyContinue
-        if (-not $ssdTier) {
-          $ssdTier = $pool | New-StorageTier -FriendlyName "SSDTier" -MediaType SSD
-          Write-Output "Tier SSD utworzony."
-        }
+  - name: Utwórz Storage Tier HDD
+    community.windows.win_storagetier:
+      name: "HDDTier"
+      state: present
+      media_type: HDD
+      storage_pool: "Pool_{{ nazwisko }}"
+    register: hdd_tier
 
-        $hddTier = Get-StorageTier -FriendlyName "HDDTier" -ErrorAction SilentlyContinue
-        if (-not $hddTier) {
-          $hddTier = $pool | New-StorageTier -FriendlyName "HDDTier" -MediaType HDD
-          Write-Output "Tier HDD utworzony."
-        }
+  - name: Utwórz Virtual Disk z mirroringiem i tieringiem
+    community.windows.win_virtualdisk:
+      name: "VD_{{ nazwisko }}"
+      state: present
+      storage_pool: "Pool_{{ nazwisko }}"
+      resiliency_setting_name: Mirror
+      storage_tiers:
+        - "{{ ssd_tier.name }}"
+        - "{{ hdd_tier.name }}"
+      storage_tier_sizes:
+        - 0  
+        - 0  
+      size: 0 
+    register: virtual_disk
 
-        $ssdSize = ($pool | Get-PhysicalDisk | where MediaType -eq SSD | Measure-Object Size -Sum).Sum
-        $hddSize = ($pool | Get-PhysicalDisk | where MediaType -eq HDD | Measure-Object Size -Sum).Sum
+  - name: Utwórz i sformatuj wolumin ReFS z literą F
+    community.windows.win_volume:
+      disk_number: "{{ virtual_disk.disk_number }}"
+      drive_letter: F
+      filesystem: ReFS
+      state: present
 
-        if (-not (Get-VirtualDisk -FriendlyName $vdName -ErrorAction SilentlyContinue)) {
-          New-VirtualDisk `
-            -StoragePoolFriendlyName $poolName `
-            -FriendlyName $vdName `
-            -ResiliencySettingName Mirror `
-            -StorageTiers @($ssdTier, $hddTier) `
-            -StorageTierSizes @($ssdSize, $hddSize)
-
-          Write-Output "VirtualDisk  utworzony."
-        } else {
-          Write-Output "VirtualDisk już istnieje."
-        }
-
-        $vd = Get-VirtualDisk -FriendlyName $vdName
-        $disk = $vd | Get-Disk
-
-        if ($disk.IsOffline) {
-          Set-Disk -Number $disk.Number -IsOffline $false
-        }
-
-        if ($disk.PartitionStyle -eq 'RAW') {
-          Initialize-Disk -Number $disk.Number -PartitionStyle GPT
-          New-Partition -DiskNumber $disk.Number -UseMaximumSize -DriveLetter $driveLetter | Out-Null
-          Format-Volume -DriveLetter $driveLetter -FileSystem ReFS -Confirm:$false | Out-Null
-          Write-Output "Dysk F: sformatowany w ReFS."
-        } else {
-          Write-Output "Dysk już zainicjalizowany."
-        }
-
-        Write-Output "Dysk F: gotowy."
-    register: storage_result
 
   - name: Utwórz lokalną grupę Kierownicy_langier
     ansible.windows.win_group:
