@@ -1,6 +1,6 @@
 ---
 - name: Playbook 4 - Konfiguracja Puli Dyskowej i Udziału Sieciowego
-  hosts: winsrv
+  hosts: windows
   gather_facts: yes
 
   vars:
@@ -129,6 +129,29 @@
         description: "Udział projektów"
         full: "{{ group }}"
 
+    - name: Pobierz listę lokalnych administratorów 
+      ansible.windows.win_powershell:
+        script: |
+           (Get-LocalGroupMember -Group "Administrators").Name
+        register: admin_users
+
+    - name: Pobierz listę wszystkich profilów użytkowników
+      ansible.windows.win_powershell:
+        script: |
+          Get-ChildItem "HKU:\" | Select-Object -ExpandProperty PSChildName
+        register: user_sids
+
+    - name: Ustaw wpis NoDeletePrinter=1 w HKCU dla użytkowników nie-adminów
+      ansible.windows.win_regedit:
+        path: "HKU\\{{ item }}\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer"
+        name: "NoDeletePrinter"
+        data: 1
+        type: dword
+        state: present
+      loop: "{{ user_sids.output }}"
+      when: item not in admin_users.output
+
+
     - name: Instalacja aplikacji winget
       ansible.windows.win_shell: |
         if (-not (winget list --id {{ item }} --disable-interactivity | Select-String {{ item }})) {
@@ -136,4 +159,3 @@
                 --accept-source-agreements --accept-package-agreements
         }
       loop: "{{ winget_apps }}"
-
