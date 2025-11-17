@@ -129,7 +129,7 @@
       full: ".\\Administrators, .\\{{ group_name }}"
       state: present
 
-  - name: Nadaj ACL NTFS: pełny dostęp dla grupy 
+  - name: Nadaj ACL NTFS pełny dostęp dla grupy 
     ansible.windows.win_acl:
       path: "{{ projekty_path }}"
       user: ".\\{{ group_name }}"
@@ -158,7 +158,7 @@
         {{- endfor }}
     register: winget_result
 
-  - name: Ustawienie rejestru: zablokuj usuwanie drukarek dla użytkowników bez uprawnień administracyjnych
+  - name: Ustawienie rejestru zablokuj usuwanie drukarek dla użytkowników bez uprawnień administracyjnych
     ansible.windows.win_powershell:
       script: |
         $adminSIDs = (Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue | ForEach-Object { $_.SID.Value }) | Where-Object { $_ }
