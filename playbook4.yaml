@@ -2,76 +2,138 @@
 - name: Playbook 4 - Konfiguracja Puli Dyskowej i Udziału Sieciowego
   hosts: windows
   gather_facts: yes
+
   vars:
-    storage_pool_name: "Pool_Dyskowy"
-    virtual_disk_name: "VD_Projekty"
+    ssd: "ssd_disks"
+    hdd: "hdd_disks"
+    pool_name: "Pool_Dyskowy"
+    disk_name: "VD_Projekty"
+    rozmiar: "10GB"
     volume_letter: "F"
     share_name: "Projekty_langier"
     folder_path: "F:\\Projekty"
-    security_group: "Kierownicy_langier"
+    group: "Kierownicy_langier"
+
     users:
-      - { name: "Marek Romanek", password: "Zaq12wsx" }
-      - { name: "Jacek Gula", password: "Zaq12wsx" }
+      - { name: "mromanek", fullname: "Marek Romanek", password: "Zaq12wsx" }
+      - { name: "jgula", fullname: "Jacek Gula", password: "Zaq12wsx" }
+
     winget_apps:
       - "7zip.7zip"
-      - "Firefox.Firefox"
+      - "Mozilla.Firefox"
       - "ISC.Dig"
 
   tasks:
 
-  - name: Utwórz pulę dyskową z automatycznym tieringiem
-    win_storagepool:
-      name: "{{ storage_pool_name }}"
-      state: present
-      physical_disks: "all"
-      auto_tiering: yes
 
-  - name: Utwórz wirtualny dysk z mirroringiem obejmujący całą pulę
-    win_virtualdisk:
-      name: "{{ virtual_disk_name }}"
-      storage_pool: "{{ storage_pool_name }}"
-      size: max
-      provisioning_type: fixed
-      resiliency_setting_name: mirror
-      state: present
+    - name: Sprawdź czy pula dyskowa istnieje
+      ansible.windows.win_powershell:
+        script: |
+          Get-StoragePool -FriendlyName "{{ pool_name }}" -ErrorAction SilentlyContinue
+      register: pool
+      changed_when: false
 
-  - name: Sformatuj dysk w ReFS i przypisz literę
-    win_volume:
-      drive_letter: "{{ volume_letter }}"
-      file_system: ReFS
-      disk: "{{ virtual_disk_name }}"
-      state: present
+    - name: Utwórz pulę dyskową jeśli nie istnieje
+      ansible.windows.win_powershell:
+        script: |
+          New-StoragePool -FriendlyName "{{ pool_name }}" `
+                          -StorageSubsystemFriendlyName "Windows Storage*" `
+                          -PhysicalDisks (Get-PhysicalDisk -CanPool $true)
+      when: pool.output == []
 
-  - name: Utwórz grupę zabezpieczeń
-    win_group:
-      name: "{{ security_group }}"
-      state: present
+    - name: Utwórz warstwę SSD jeśli nie istnieje
+      ansible.windows.win_powershell:
+        script: |
+          if (-not (Get-StorageTier -FriendlyName "{{ ssd }}" -ErrorAction SilentlyContinue)) {
+            New-StorageTier -StoragePoolFriendlyName "{{ pool_name }}" `
+                            -FriendlyName "{{ ssd }}" `
+                            -MediaType SSD
+          }
+      changed_when: false
 
-  - name: Utwórz użytkowników
-    win_user:
-      name: "{{ item.name }}"
-      password: "{{ item.password }}"
-      state: present
-      groups:
-        - "{{ security_group }}"
-    loop: "{{ users }}"
+    - name: Utwórz warstwę HDD jeśli nie istnieje
+      ansible.windows.win_powershell:
+        script: |
+          if (-not (Get-StorageTier -FriendlyName "{{ hdd }}" -ErrorAction SilentlyContinue)) {
+            New-StorageTier -StoragePoolFriendlyName "{{ pool_name }}" `
+                            -FriendlyName "{{ hdd }}" `
+                            -MediaType HDD
+          }
+      changed_when: false
 
-  - name: Utwórz folder Projekty na dysku F
-    win_file:
-      path: "{{ folder_path }}"
-      state: directory
+    - name: Sprawdź czy wirtualny dysk istnieje
+      ansible.windows.win_powershell:
+        script: |
+          Get-VirtualDisk -FriendlyName "{{ disk_name }}" -ErrorAction SilentlyContinue
+      register: vd
+      changed_when: false
 
-  - name: Udostępnij folder w sieci
-    win_share:
-      name: "{{ share_name }}"
-      path: "{{ folder_path }}"
-      description: "Udział projektów"
-      full_access: "{{ security_group }}"
+    - name: Utwórz wirtualny dysk jeśli nie istnieje
+      ansible.windows.win_powershell:
+        script: |
+          $ssd = Get-StorageTier -FriendlyName "{{ ssd }}"
+          $hdd = Get-StorageTier -FriendlyName "{{ hdd }}"
+          New-VirtualDisk -StoragePoolFriendlyName "{{ pool_name }}" `
+                          -FriendlyName "{{ disk_name }}" `
+                          -ResiliencySettingName Mirror `
+                          -ProvisioningType Fixed `
+                          -StorageTiers $ssd, $hdd `
+                          -StorageTierSizes {{ rozmiar }}, {{ rozmiar }}
+      when: vd.output == []
 
-  - name: Zainstaluj aplikacje przez winget
-    win_package:
-      name: "{{ item }}"
-      state: present
-      source: winget
-    loop: "{{ winget_apps }}"
+    - name: Pobierz informacje o dysku
+      ansible.windows.win_powershell:
+        script: |
+          Get-VirtualDisk -FriendlyName "{{ disk_name }}" | Get-Disk
+      register: disk
+      changed_when: false
+
+    - name: Zainicjuj dysk GPT jeśli trzeba
+      ansible.windows.win_powershell:
+        script: |
+          Initialize-Disk -Number {{ disk.output[0].Number }} -PartitionStyle GPT
+      when: disk.output[0].PartitionStyle == 0
+
+    - name: Utwórz partycję i sformatuj ReFS jeśli brak partycji
+      ansible.windows.win_powershell:
+        script: |
+          if (-not (Get-Partition -DiskNumber {{ disk.output[0].Number }} | Where-Object DriveLetter -eq "{{ volume_letter }}")) {
+            $p = New-Partition -DiskNumber {{ disk.output[0].Number }} -UseMaximumSize -DriveLetter {{ volume_letter }}
+            Format-Volume -Partition $p -FileSystem ReFS -Confirm:$false
+          }
+
+    - name: Utwórz grupę
+      ansible.windows.win_group:
+        name: "{{ group }}"
+        state: present
+
+    - name: Tworzenie użytkowników
+      ansible.windows.win_user:
+        name: "{{ item.name }}"
+        fullname: "{{ item.fullname }}"
+        password: "{{ item.password }}"
+        state: present
+        groups:
+          - "{{ group }}"
+      loop: "{{ users }}"
+
+    - name: Utwórz katalog Projekty
+      ansible.windows.win_file:
+        path: "{{ folder_path }}"
+        state: directory
+
+    - name: Udostępnij udział
+      ansible.windows.win_share:
+        name: "{{ share_name }}"
+        path: "{{ folder_path }}"
+        description: "Udział projektów"
+        full: "{{ group }}"
+
+    - name: Instalacja aplikacji winget
+      ansible.windows.win_shell: |
+        if (-not (winget list --id {{ item }} --disable-interactivity | Select-String {{ item }})) {
+          winget install --id {{ item }} -e --silent --disable-interactivity `
+                --accept-source-agreements --accept-package-agreements
+        }
+      loop: "{{ winget_apps }}"
 
