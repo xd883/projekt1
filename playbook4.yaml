@@ -24,7 +24,7 @@
       - id: "Mozilla.Firefox"
   tasks:
 
-  - name: Utwórz pulę dyskową, storage tiers i wirtualny dysk F: (PowerShell)
+  - name: Utwórz pulę dyskową, storage tiers i wirtualny dysk F
   ansible.windows.win_powershell:
     script: |
       $poolName = "{{ pool_name }}"
