@@ -1,6 +1,6 @@
 ---
 - name: Playbook 4 - Konfiguracja Puli Dyskowej i Udziału Sieciowego
-  hosts: windows
+  hosts: winsrv
   gather_facts: yes
 
   vars:
