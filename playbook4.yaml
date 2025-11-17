@@ -3,7 +3,8 @@
   hosts: winsrv
   gather_facts: no
   vars:
-     nazwisko: "langier"            
+    
+    nazwisko: "langier"            
     pool_name: "Pool_langier"
     vdisk_name: "VD_langier"
     vd_drive_letter: "F"
