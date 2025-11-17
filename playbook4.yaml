@@ -133,13 +133,13 @@
       ansible.windows.win_powershell:
         script: |
            (Get-LocalGroupMember -Group "Administrators").Name
-        register: admin_users
+      register: admin_users
 
     - name: Pobierz listę wszystkich profilów użytkowników
       ansible.windows.win_powershell:
         script: |
           Get-ChildItem "HKU:\" | Select-Object -ExpandProperty PSChildName
-        register: user_sids
+      register: user_sids
 
     - name: Ustaw wpis NoDeletePrinter=1 w HKCU dla użytkowników nie-adminów
       ansible.windows.win_regedit:
