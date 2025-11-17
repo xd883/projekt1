@@ -25,9 +25,9 @@
   tasks:
 
   - name: Pobierz wszystkie dyski, które można dodać do Storage Pool
-  community.windows.win_disk_facts:
+    community.windows.win_disk_facts:
     filter_can_pool: true
-  register: pool_disks
+    register: pool_disks
 
   - name: Inicjalizuj dyski (GPT)
     community.windows.win_initialize_disk:
